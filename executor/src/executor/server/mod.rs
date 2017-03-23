@@ -45,8 +45,8 @@ impl ServerManager {
     pub fn new(ip: String, port: u32, webhook_uri: String, no_colour: bool) -> ServerManager {
         let start_time = 0;
         ServerManager {
-            ip: ip,
-            port: port,
+            ip: if ip!="" { ip } else { ::IP_DEFAULT.to_string() },
+            port: if port > 0 && port <= 65535 { port } else { ::PORT_DEFAULT },
             state: SERVER_STATE_RUN.to_string(),
             start_time: start_time,
             webhook_uri: webhook_uri.to_string(),
@@ -99,7 +99,7 @@ impl JobRequest {
             return Err(ValidationError::no_output(message))
         }
         // attempt dry run
-        let cmd_path = try!(commander.get_command(::executor::FACTOTUM));
+        let cmd_path = try!(commander.get_command(::FACTOTUM));
         let mut cmd_args = vec!["run".to_string(), request.factfile_path.clone(), "--dry-run".to_string()];
         cmd_args.extend_from_slice(request.factfile_args.as_slice());
         match commander::execute(cmd_path, cmd_args) {

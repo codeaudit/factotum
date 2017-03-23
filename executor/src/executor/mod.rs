@@ -43,8 +43,6 @@ use executor::persistence::Persistence;
 use executor::responder::{DispatcherStatus, JobStatus, WorkerStatus};
 use executor::server::{ServerManager, JobRequest};
 
-const FACTOTUM: &'static str = "factotum";
-
 #[derive(Debug, Copy, Clone)]
 pub struct Server;
 impl Key for Server {
@@ -73,7 +71,7 @@ pub fn start(args: Args) {
     let executor = ServerManager::new(args.flag_ip, args.flag_port, args.flag_webhook, args.flag_no_colour);
     let storage = Persistence::new("/tmp", "test");
     let dispatcher = Dispatcher::new(args.flag_max_jobs, args.flag_max_workers);
-    let commander = commands![FACTOTUM.to_string() => args.flag_factotum_bin];
+    let commander = commands![::FACTOTUM.to_string() => args.flag_factotum_bin];
     
     let address = SocketAddr::from_str(&format!("{}:{}", executor.ip, executor.port)).expect("Failed to parse socket address");
 
@@ -102,7 +100,9 @@ pub fn start(args: Args) {
             let socket_addr = listening.socket;
             let ip = socket_addr.ip();
             let port = socket_addr.port();
-            println!("Factotum server version [{}] listening on [{}:{}]", ::VERSION, ip, port)
+            let start_message = format!("Factotum server version [{}] listening on [{}:{}]", ::VERSION, ip, port);
+            info!("{}", start_message);
+            println!("{}", start_message)
         }
         Err(e) => println!("Failed to start server - {}", e)
     }
@@ -113,7 +113,7 @@ pub fn start(args: Args) {
 pub fn trigger_worker_manager(dispatcher: Dispatcher, commander: &Commander) -> Result<(Sender<Dispatch>, JoinHandle<String>, ThreadPool), String> {
     let (tx, rx) = mpsc::channel();
     let primary_pool = ThreadPool::new_with_name("primary_pool".to_string(), dispatcher.max_workers);
-    let cmd_path = try!(commander.get_command(FACTOTUM));
+    let cmd_path = try!(commander.get_command(::FACTOTUM));
 
     let join_handle = spawn_worker_manager(tx.clone(), rx, dispatcher.requests_queue, dispatcher.max_jobs, primary_pool.clone(), cmd_path);
 

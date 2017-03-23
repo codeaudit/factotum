@@ -38,12 +38,20 @@ use docopt::Docopt;
 mod executor;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
+const IP_DEFAULT: &'static str = "0.0.0.0";
+const PORT_DEFAULT: u32 = 3000;
+const MAX_JOBS_DEFAULT: usize = 1000;
+const MAX_WORKERS_DEFAULT: usize = 20;
+
+const FACTOTUM: &'static str = "factotum";
+
 const USAGE: &'static str =
     "
 Executor.
 
 Usage:
-  executor --max-jobs=<size> --max-workers=<size> --ip=<address> --port=<number> --factotum-bin=<path> [--webhook=<url>] [--no-colour]
+  executor --factotum-bin=<path> [--ip=<address> --port=<number> --max-jobs=<size> --max-workers=<size> --webhook=<url>] [--no-colour]
   executor (-h | --help)
   executor (-v | --version)
 

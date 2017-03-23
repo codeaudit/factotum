@@ -42,7 +42,7 @@ fn server_manager_is_not_running() {
 #[test]
 fn job_request_empty_job_name() {
     let job_request = JobRequest::new("1".to_string(), String::new(), "/tmp/somewhere".to_string(), vec![]);
-    let commander = commands![::executor::FACTOTUM.to_string() => "/tmp/fake_path".to_string()];
+    let commander = commands![::FACTOTUM.to_string() => "/tmp/fake_path".to_string()];
     let validation_error = JobRequest::validate(job_request.clone(), &commander).unwrap_err();
     assert_eq!(validation_error, ValidationError::no_output("No valid value found for 'jobName'".to_string()));
 }
@@ -50,7 +50,7 @@ fn job_request_empty_job_name() {
 #[test]
 fn job_request_empty_factfile_path() {
     let job_request = JobRequest::new("1".to_string(), "dummy".to_string(), String::new(), vec![]);
-    let commander = commands![::executor::FACTOTUM.to_string() => "/tmp/fake_path".to_string()];
+    let commander = commands![::FACTOTUM.to_string() => "/tmp/fake_path".to_string()];
     let validation_error = JobRequest::validate(job_request.clone(), &commander).unwrap_err();
     assert_eq!(validation_error, ValidationError::no_output("No valid value found for 'factfilePath'".to_string()));
 }
@@ -58,7 +58,7 @@ fn job_request_empty_factfile_path() {
 #[test]
 fn job_request_invalid_factfile_path() {
     let job_request = JobRequest::new("1".to_string(), "dummy".to_string(), "/tmp/somewhere".to_string(), vec![]);
-    let commander = commands![::executor::FACTOTUM.to_string() => "/tmp/fake_path".to_string()];
+    let commander = commands![::FACTOTUM.to_string() => "/tmp/fake_path".to_string()];
     let validation_error = JobRequest::validate(job_request.clone(), &commander).unwrap_err();
     assert_eq!(validation_error, ValidationError::no_output("Value does not exist on host for 'factfilePath':'/tmp/somewhere'".to_string()));
 }

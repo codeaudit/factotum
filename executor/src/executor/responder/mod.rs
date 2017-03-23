@@ -12,7 +12,6 @@
 // governing permissions and limitations there under.
 //
 
-use std::io::Read as _Read;
 use std::ops::Deref;
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;

@@ -41,8 +41,8 @@ pub struct Dispatcher {
 impl Dispatcher {
     pub fn new(queue_size: usize, workers_size: usize) -> Dispatcher {
         Dispatcher {
-            max_jobs: queue_size,
-            max_workers: workers_size,
+            max_jobs: if queue_size > 0 { queue_size } else { ::MAX_JOBS_DEFAULT },
+            max_workers: if workers_size > 0 { workers_size } else { ::MAX_WORKERS_DEFAULT },
             requests_queue: VecDeque::with_capacity(queue_size),
         }
     }
