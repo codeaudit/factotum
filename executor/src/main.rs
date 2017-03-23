@@ -16,6 +16,9 @@
 extern crate log;
 extern crate log4rs;
 extern crate docopt;
+#[macro_use]
+extern crate lazy_static;
+extern crate regex;
 extern crate uuid;
 extern crate threadpool;
 #[macro_use(itry, iexpect)]
@@ -45,6 +48,8 @@ const MAX_JOBS_DEFAULT: usize = 1000;
 const MAX_WORKERS_DEFAULT: usize = 20;
 
 const FACTOTUM: &'static str = "factotum";
+
+const VALID_IP_REGEX: &'static str = r"\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\b";
 
 const USAGE: &'static str =
     "
