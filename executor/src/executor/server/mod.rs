@@ -60,7 +60,9 @@ impl ServerManager {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct JobRequest {
+    #[serde(skip_deserializing)]
     pub job_id: String,
     pub job_name: String,
     pub factfile_path: String,
@@ -133,6 +135,7 @@ impl PartialEq for JobRequest {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SettingsRequest {
     pub state: String
 }

@@ -34,37 +34,42 @@ const JSON_CONTENT_TYPE: &'static str = "application/json; charset=UTF-8";
 // JSON Response Structs
 
 #[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ResponseMessage {
     message: String
 }
 
 #[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct FactotumServerStatus {
     version: VersionStatus,
     server: ServerStatus,
     dispatcher: DispatcherStatus,
-    system: SystemStatus
 }
 
 #[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct VersionStatus {
     executor: String
 }
 
 #[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ServerStatus {
-    startTime: i64,
-    upTime: i64,
+    start_time: i64,
+    up_time: i64,
     state: String
 }
 
 #[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DispatcherStatus {
     pub workers: WorkerStatus,
     pub jobs: JobStatus,
 }
 
 #[derive(Debug,PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WorkerStatus {
     pub total: usize,
     pub idle: usize,
@@ -72,25 +77,12 @@ pub struct WorkerStatus {
 }
 
 #[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct JobStatus {
-    pub maxQueueSize: usize,
-    pub inQueue: usize,
-    pub failCount: usize,
-    pub successCount: usize,
-}
-
-#[derive(Debug, PartialEq, Serialize)]
-struct SystemStatus {
-    memory: MemoryStatus,
-    numCpu: i32
-}
-
-#[derive(Debug, PartialEq, Serialize)]
-struct MemoryStatus {
-    alloc: i32,
-    totalAlloc: i32,
-    heapAlloc: i32,
-    heapSys: i32
+    pub max_queue_size: usize,
+    pub in_queue: usize,
+    pub fail_count: usize,
+    pub success_count: usize,
 }
 
 // Response handlers
@@ -163,8 +155,8 @@ pub fn submit(request: &mut Request) -> IronResult<Response> {
     // append args
     JobRequest::append_job_args(&server.deref(), &mut validated_job_request);
     let job_id = validated_job_request.job_id.clone();
-    jobs_channel.send(Dispatch::NewRequest(validated_job_request)).unwrap();
-    return_json(status::Ok, create_ok_response(&format!("JOB SUBMITTED job_id:[{}]", job_id)))
+    jobs_channel.send(Dispatch::NewRequest(validated_job_request)).expect("Job requests channel receiver has been deallocated");
+    return_json(status::Ok, create_ok_response(&format!("JOB SUBMITTED jobId:[{}]", job_id)))
 }
 
 pub fn check(request: &mut Request) -> IronResult<Response> {
@@ -213,36 +205,27 @@ fn get_help_message() -> String {
 
 fn get_server_status(server: &ServerManager, jobs_channel: Sender<Dispatch>) -> String {
     let (tx, rx) = mpsc::channel();
-    jobs_channel.send(Dispatch::StatusUpdate(Query::new("status_query".to_string(), tx))).unwrap();
-    let dispatcher_status = rx.recv().unwrap();
+    jobs_channel.send(Dispatch::StatusUpdate(Query::new("status_query".to_string(), tx))).expect("Job requests channel receiver has been deallocated");
+    let dispatcher_status = rx.recv().expect("Server status senders have been disconnected");
 
     let message = FactotumServerStatus {
         version: VersionStatus {
             executor: ::VERSION.to_string()
         },
         server: ServerStatus {
-            startTime: 0,
-            upTime: 0,
+            start_time: 0,
+            up_time: 0,
             state: server.state.to_string()
         },
         dispatcher: dispatcher_status,
-        system: SystemStatus {
-            memory: MemoryStatus {
-                alloc: 0,
-                totalAlloc: 0,
-                heapAlloc: 0,
-                heapSys: 0
-            },
-            numCpu: 1
-        }
     };
     encode_pretty(&message)
 }
 
 fn is_requests_queue_full(jobs_channel: Sender<Dispatch>) -> bool {
     let (tx, rx) = mpsc::channel();
-    jobs_channel.send(Dispatch::CheckQueue(Query::new("queue_query".to_string(), tx))).unwrap();
-    rx.recv().unwrap()
+    jobs_channel.send(Dispatch::CheckQueue(Query::new("queue_query".to_string(), tx))).expect("Job requests channel receiver has been deallocated");
+    rx.recv().expect("Queue query senders have been disconnected")
 }
 
 fn encode_compact<T: Serialize>(message: T) -> String {

@@ -152,28 +152,28 @@ fn send_status_update(query: Query<DispatcherStatus>, requests_queue: &mut VecDe
             active: active_workers,
         },
         jobs: JobStatus {
-            maxQueueSize: max_jobs,
-            inQueue: requests_queue.len(),
-            failCount: 0,
-            successCount: 0
+            max_queue_size: max_jobs,
+            in_queue: requests_queue.len(),
+            fail_count: 0,
+            success_count: 0
         }
     };
-    tx.send(result).unwrap();
+    tx.send(result).expect("Server status channel receiver has been deallocated");
 }
 
 fn is_queue_full(query: Query<bool>, requests_queue: &mut VecDeque<JobRequest>, max_jobs: usize) {
     let tx = query.status_tx;
     let is_full = requests_queue.len() >= max_jobs;
-    tx.send(is_full).unwrap();
+    tx.send(is_full).expect("Queue query channel receiver has been deallocated");
 }
 
 fn new_job_request(requests_channel: Sender<Dispatch>, requests_queue: &mut VecDeque<JobRequest>, primary_pool: ThreadPool, request: JobRequest) {
-    info!("ADDING NEW JOB job_id:[{}]", request.job_id);
+    info!("ADDING NEW JOB jobId:[{}]", request.job_id);
     requests_queue.push_back(request);
     // Create entry in persistence storage
     // Check queue size - return error if limit exceeded (not important right now)
     if primary_pool.active_count() < primary_pool.max_count() {
-        requests_channel.send(Dispatch::ProcessRequest).unwrap();
+        requests_channel.send(Dispatch::ProcessRequest).expect("Job requests channel receiver has been deallocated");
     } else {
         info!("No threads available - waiting for a job to complete.")
     }
@@ -190,11 +190,11 @@ fn process_job_request(requests_channel: Sender<Dispatch>, requests_queue: &mut 
                 cmd_args.extend_from_slice(request.factfile_args.as_slice());
                 match commander::execute(cmd_path, cmd_args) {
                     Ok(_) => {
-                        requests_channel.send(Dispatch::RequestComplete(request)).unwrap();
+                        requests_channel.send(Dispatch::RequestComplete(request)).expect("Job requests channel receiver has been deallocated");
                     },
                     Err(error) => {
                         error!("{}", error);
-                        requests_channel.send(Dispatch::RequestFailure(request)).unwrap();
+                        requests_channel.send(Dispatch::RequestFailure(request)).expect("Job requests channel receiver has been deallocated");
                     }
                 };
             });
@@ -204,15 +204,15 @@ fn process_job_request(requests_channel: Sender<Dispatch>, requests_queue: &mut 
 }
 
 fn complete_job_request(requests_channel: Sender<Dispatch>, request: JobRequest) {
-    info!("JOB REQUEST COMPLETE job_id:[{}]", request.job_id);
+    info!("JOB REQUEST COMPLETE jobId:[{}]", request.job_id);
     // Update completion in persistence storage
-    requests_channel.send(Dispatch::ProcessRequest).unwrap();
+    requests_channel.send(Dispatch::ProcessRequest).expect("Job requests channel receiver has been deallocated");
 }
 
 fn failed_job_request(requests_channel: Sender<Dispatch>, request: JobRequest) {
-    error!("JOB REQUEST FAILED job_id:[{}]", request.job_id);
+    error!("JOB REQUEST FAILED jobId:[{}]", request.job_id);
     // Update failure in persistence storage
-    requests_channel.send(Dispatch::ProcessRequest).unwrap();
+    requests_channel.send(Dispatch::ProcessRequest).expect("Job requests channel receiver has been deallocated");
 }
 
 fn stop_processing() -> bool {
