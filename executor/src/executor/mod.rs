@@ -184,7 +184,7 @@ fn process_job_request(requests_channel: Sender<Dispatch>, requests_queue: &mut 
     match requests_queue.pop_front() {
         Some(request) => {
             primary_pool.execute(move || {
-                info!("PROCESSING JOB");
+                info!("PROCESSING JOB jobId:[{}]", request.job_id);
                 // Update start time in persistence storage
                 let mut cmd_args = vec!["run".to_string(), request.factfile_path.clone()];
                 cmd_args.extend_from_slice(request.factfile_args.as_slice());

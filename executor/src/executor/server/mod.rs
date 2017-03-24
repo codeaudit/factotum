@@ -46,7 +46,6 @@ pub struct ServerManager {
 impl ServerManager {
     pub fn new(ip: String, port: u32, webhook_uri: String, no_colour: bool) -> ServerManager {
         let start_time = 0;
-        info!("VALID IP? {}", is_a_valid_ip(&ip));
         ServerManager {
             ip: if is_a_valid_ip(&ip) { ip } else { ::IP_DEFAULT.to_string() },
             port: if port > 0 && port <= 65535 { port } else { ::PORT_DEFAULT },
@@ -87,11 +86,11 @@ impl JobRequest {
         // check factfile path not empty
         // check factfile args not empty
         if request.job_name == "" {
-            let message = "No valid value found for 'jobName'".to_string();
+            let message = "No valid value found: field 'jobName' cannot be empty".to_string();
             error!("{}", message);
             return Err(ValidationError::no_output(message))
         } else if request.factfile_path == "" {
-            let message = "No valid value found for 'factfilePath'".to_string();
+            let message = "No valid value found: field 'factfilePath' cannot be empty".to_string();
             error!("{}", message);
             return Err(ValidationError::no_output(message))
         }
@@ -159,7 +158,7 @@ impl SettingsRequest {
     pub fn validate(request: SettingsRequest) -> Result<SettingsRequest, ValidationError> {
         match request.state.as_ref() {
             SERVER_STATE_RUN | SERVER_STATE_DRAIN => Ok(request),
-            _ => Err(ValidationError::no_output(format!("Invalid state, must be one of ({}|{})", SERVER_STATE_RUN, SERVER_STATE_DRAIN)))
+            _ => Err(ValidationError::no_output(format!("Invalid 'state', must be one of ({}|{})", SERVER_STATE_RUN, SERVER_STATE_DRAIN)))
         }
     }
 }
@@ -187,7 +186,7 @@ impl ValidationError {
 
 impl fmt::Display for ValidationError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Validation error: {}", self.error)
+        write!(f, "Validation Error: {}", self.error)
     }
 }
 

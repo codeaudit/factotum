@@ -12,6 +12,7 @@
 // governing permissions and limitations there under.
 //
 
+use std::error::Error;
 use std::ops::Deref;
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
@@ -106,16 +107,27 @@ pub fn settings(request: &mut Request) -> IronResult<Response> {
     let mut server = rwlock.write().unwrap();
     
     // get body
-    let content_type = JSON_CONTENT_TYPE.parse::<Mime>().unwrap();
-    let decoded_settings = itry!(request.get::<bodyparser::Struct<SettingsRequest>>(), (content_type, status::BadRequest, create_warn_response("Error decoding JSON string")));
-    let settings = iexpect!(decoded_settings, (content_type, status::BadRequest, create_warn_response("No body found")));
+    let settings = match request.get::<bodyparser::Struct<SettingsRequest>>() {
+        Ok(Some(decoded_settings)) => decoded_settings,
+        Ok(None) => {
+            return return_json(status::BadRequest, create_warn_response("Error: No body found in POST request"))
+        },
+        Err(e) => {
+            return return_json(status::BadRequest, create_warn_response(&format!("Error decoding JSON string: {}", e.cause().unwrap())))
+        }
+    };
 
     // validate settings request
-    let validated_settings = itry!(SettingsRequest::validate(settings), (content_type, status::BadRequest, create_warn_response("Error - No valid value found for 'state'")));
+    let validated_settings = match SettingsRequest::validate(settings) {
+        Ok(validated_settings) => validated_settings,
+        Err(e) => {
+            return return_json(status::BadRequest, create_warn_response(&format!("{}", e)))
+        }
+    };
 
     // update server state
     server.state = validated_settings.state.to_string();
-    return_json(status::Ok, create_ok_response("Update acknowledged"))
+    return_json(status::Ok, create_ok_response(&format!("Update acknowledged: [state: {}]", server.state)))
 }
 
 pub fn submit(request: &mut Request) -> IronResult<Response> {
@@ -129,9 +141,15 @@ pub fn submit(request: &mut Request) -> IronResult<Response> {
     let jobs_channel = sender_mutex.try_lock().unwrap();
 
     // get body
-    let content_type = JSON_CONTENT_TYPE.parse::<Mime>().unwrap();
-    let decoded_job_request = itry!(request.get::<bodyparser::Struct<JobRequest>>(), (content_type, status::BadRequest, create_warn_response("Error decoding JSON string")));
-    let job_request = iexpect!(decoded_job_request, (content_type, status::BadRequest, create_warn_response("No body found")));
+    let job_request = match request.get::<bodyparser::Struct<JobRequest>>() {
+        Ok(Some(decoded_job_request)) => decoded_job_request,
+        Ok(None) => {
+            return return_json(status::BadRequest, create_warn_response("Error: No body found in POST request"))
+        },
+        Err(e) => {
+            return return_json(status::BadRequest, create_warn_response(&format!("Error decoding JSON string: {}", e.cause().unwrap())))
+        }
+    };
 
     // check state
     if !server.is_running() {
@@ -139,7 +157,12 @@ pub fn submit(request: &mut Request) -> IronResult<Response> {
     }
 
     // validate job request
-    let mut validated_job_request = itry!(JobRequest::validate(job_request, &commander), (content_type, status::BadRequest, create_warn_response("Error validating JSON for job request")));
+    let mut validated_job_request = match JobRequest::validate(job_request, &commander) {
+        Ok(validated_job_request) => validated_job_request,
+        Err(e) => {
+            return return_json(status::BadRequest, create_warn_response(&format!("{}", e)))
+        }
+    };
 
     // check if job has been run before
     if persistence.has_run(&mut validated_job_request) {
@@ -155,7 +178,7 @@ pub fn submit(request: &mut Request) -> IronResult<Response> {
     JobRequest::append_job_args(&server.deref(), &mut validated_job_request);
     let job_id = validated_job_request.job_id.clone();
     jobs_channel.send(Dispatch::NewRequest(validated_job_request)).expect("Job requests channel receiver has been deallocated");
-    return_json(status::Ok, create_ok_response(&format!("JOB SUBMITTED jobId:[{}]", job_id)))
+    return_json(status::Ok, create_ok_response(&format!("JOB SUBMITTED  jobId:[{}]", job_id)))
 }
 
 pub fn check(request: &mut Request) -> IronResult<Response> {
