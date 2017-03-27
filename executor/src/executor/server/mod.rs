@@ -15,7 +15,7 @@
 use std::error;
 use std::fmt;
 use std::path::Path;
-
+use chrono::{DateTime, UTC};
 use regex::Regex;
 use uuid::Uuid;
 
@@ -38,19 +38,18 @@ pub struct ServerManager {
     pub ip: String,
     pub port: u32,
     pub state: String,
-    pub start_time: i64,
+    pub start_time: DateTime<UTC>,
     pub webhook_uri: String,
     pub no_colour: bool,
 }
 
 impl ServerManager {
     pub fn new(ip: String, port: u32, webhook_uri: String, no_colour: bool) -> ServerManager {
-        let start_time = 0;
         ServerManager {
             ip: if is_a_valid_ip(&ip) { ip } else { ::IP_DEFAULT.to_string() },
             port: if port > 0 && port <= 65535 { port } else { ::PORT_DEFAULT },
             state: SERVER_STATE_RUN.to_string(),
-            start_time: start_time,
+            start_time: UTC::now(),
             webhook_uri: webhook_uri.to_string(),
             no_colour: no_colour,
         }
@@ -58,6 +57,11 @@ impl ServerManager {
 
     pub fn is_running(&self) -> bool {
         self.state == SERVER_STATE_RUN
+    }
+
+    pub fn get_uptime(&self) -> i64 {
+        let uptime = UTC::now().signed_duration_since(self.start_time);
+        uptime.num_milliseconds()
     }
 }
 

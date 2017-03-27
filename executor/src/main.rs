@@ -16,12 +16,12 @@
 extern crate log;
 extern crate log4rs;
 extern crate docopt;
+extern crate chrono;
 #[macro_use]
 extern crate lazy_static;
 extern crate regex;
 extern crate uuid;
 extern crate threadpool;
-#[macro_use(itry, iexpect)]
 extern crate iron;
 #[macro_use(router)]
 extern crate router;

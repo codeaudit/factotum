@@ -56,7 +56,7 @@ struct VersionStatus {
 #[derive(Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ServerStatus {
-    start_time: i64,
+    start_time: String,
     up_time: i64,
     state: String
 }
@@ -235,8 +235,8 @@ fn get_server_status(server: &ServerManager, jobs_channel: Sender<Dispatch>) -> 
             executor: ::VERSION.to_string()
         },
         server: ServerStatus {
-            start_time: 0,
-            up_time: 0,
+            start_time: server.start_time.to_rfc3339(),
+            up_time: server.get_uptime(),
             state: server.state.to_string()
         },
         dispatcher: dispatcher_status,
