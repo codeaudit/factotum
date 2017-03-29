@@ -87,20 +87,27 @@ pub struct Args {
 
 fn get_log_config() -> Result<log4rs::config::Config, log4rs::config::Errors> {
     use log::LogLevelFilter;
+    use log4rs::append::console::ConsoleAppender;
     use log4rs::append::file::FileAppender;
     use log4rs::encode::pattern::PatternEncoder;
     use log4rs::config::{Appender, Config, Root};
     
+    let stdout = ConsoleAppender::builder()
+        .encoder(Box::new(PatternEncoder::new("{d} {l} - {m}{n}")))
+        .build();
+
     let file_appender = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new("{d} {l} - {m}{n}")))
         .build(".factotum/server.log")
         .unwrap();
 
     let root = Root::builder()
-        .appender("file")
+        .appender("stdout")
+        // .appender("file")
         .build(LogLevelFilter::Info);
 
     Config::builder()
+        .appender(Appender::builder().build("stdout", Box::new(stdout)))
         .appender(Appender::builder().build("file", Box::new(file_appender)))
         .build(root)
 }
