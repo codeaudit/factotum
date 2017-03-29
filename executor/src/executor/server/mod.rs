@@ -16,7 +16,6 @@ use std::error;
 use std::fmt;
 use std::path::Path;
 use chrono::{DateTime, UTC};
-use regex::Regex;
 use uuid::Uuid;
 
 use executor::commander;
@@ -44,9 +43,9 @@ pub struct ServerManager {
 }
 
 impl ServerManager {
-    pub fn new(ip: String, port: u32, webhook_uri: String, no_colour: bool) -> ServerManager {
+    pub fn new(wrapped_ip: Option<String>, port: u32, webhook_uri: String, no_colour: bool) -> ServerManager {
         ServerManager {
-            ip: if is_a_valid_ip(&ip) { ip } else { ::IP_DEFAULT.to_string() },
+            ip: if let Some(ip) = wrapped_ip { ip } else { ::IP_DEFAULT.to_string() },
             port: if port > 0 && port <= 65535 { port } else { ::PORT_DEFAULT },
             state: SERVER_STATE_RUN.to_string(),
             start_time: UTC::now(),
@@ -110,7 +109,7 @@ impl JobRequest {
         cmd_args.extend_from_slice(request.factfile_args.as_slice());
         match commander::execute(cmd_path, cmd_args) {
             Ok(_) => {
-                info!("Dry run success");
+                debug!("Dry run success");
             },
             Err(error) => {
                 error!("{}", error);
@@ -208,11 +207,4 @@ impl From<String> for ValidationError {
 
 fn generate_id() -> String {
     Uuid::new_v4().hyphenated().to_string()
-}
-
-fn is_a_valid_ip(text: &str) -> bool {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(::VALID_IP_REGEX).unwrap();
-    }
-    RE.is_match(text)
 }

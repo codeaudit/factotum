@@ -181,7 +181,7 @@ pub fn submit(request: &mut Request) -> IronResult<Response> {
     JobRequest::append_job_args(&server.deref(), &mut validated_job_request);
     let job_id = validated_job_request.job_id.clone();
     jobs_channel.send(Dispatch::NewRequest(validated_job_request)).expect("Job requests channel receiver has been deallocated");
-    return_json(status::Ok, create_ok_response(request, &format!("JOB SUBMITTED  jobId:[{}]", job_id)))
+    return_json(status::Ok, create_ok_response(request, &format!("SUBMITTING JOB REQ jobId:[{}]", job_id)))
 }
 
 pub fn check(request: &mut Request) -> IronResult<Response> {

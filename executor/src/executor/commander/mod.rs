@@ -48,7 +48,7 @@ impl Commander {
 
 pub fn execute(cmd_path: String, cmd_args: Vec<String>) -> Result<String, String> {
     let command_str = format!("{} {}", cmd_path, cmd_args.join(" "));
-    info!("Executing: [{}]", command_str);
+    debug!("Executing: [{}]", command_str);
     let failed_command_msg = format!("Failed to execute command: [{}]", command_str);
     match Command::new(cmd_path)
                 .args(&cmd_args)

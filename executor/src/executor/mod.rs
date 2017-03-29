@@ -168,7 +168,7 @@ fn is_queue_full(query: Query<bool>, requests_queue: &mut VecDeque<JobRequest>, 
 }
 
 fn new_job_request(requests_channel: Sender<Dispatch>, requests_queue: &mut VecDeque<JobRequest>, primary_pool: ThreadPool, request: JobRequest) {
-    info!("ADDING NEW JOB jobId:[{}]", request.job_id);
+    debug!("ADDING NEW JOB jobId:[{}]", request.job_id);
     requests_queue.push_back(request);
     // Create entry in persistence storage
     // Check queue size - return error if limit exceeded (not important right now)
@@ -180,11 +180,11 @@ fn new_job_request(requests_channel: Sender<Dispatch>, requests_queue: &mut VecD
 }
 
 fn process_job_request(requests_channel: Sender<Dispatch>, requests_queue: &mut VecDeque<JobRequest>, primary_pool: ThreadPool, cmd_path: String) {
-    info!("QUEUE SIZE = {}", requests_queue.len());
+    debug!("QUEUE SIZE = {}", requests_queue.len());
     match requests_queue.pop_front() {
         Some(request) => {
             primary_pool.execute(move || {
-                info!("PROCESSING JOB jobId:[{}]", request.job_id);
+                debug!("PROCESSING JOB REQ jobId:[{}]", request.job_id);
                 // Update start time in persistence storage
                 let mut cmd_args = vec!["run".to_string(), request.factfile_path.clone()];
                 cmd_args.extend_from_slice(request.factfile_args.as_slice());
@@ -199,18 +199,18 @@ fn process_job_request(requests_channel: Sender<Dispatch>, requests_queue: &mut 
                 };
             });
         }
-        None => info!("NOTHING IN QUEUE!")
+        None => debug!("NOTHING IN QUEUE!")
     }
 }
 
 fn complete_job_request(requests_channel: Sender<Dispatch>, request: JobRequest) {
-    info!("JOB REQUEST COMPLETE jobId:[{}]", request.job_id);
+    info!("COMPLETED JOB REQ  jobId:[{}]", request.job_id);
     // Update completion in persistence storage
     requests_channel.send(Dispatch::ProcessRequest).expect("Job requests channel receiver has been deallocated");
 }
 
 fn failed_job_request(requests_channel: Sender<Dispatch>, request: JobRequest) {
-    error!("JOB REQUEST FAILED jobId:[{}]", request.job_id);
+    error!("FAILED JOB REQ jobId:[{}]", request.job_id);
     // Update failure in persistence storage
     requests_channel.send(Dispatch::ProcessRequest).expect("Job requests channel receiver has been deallocated");
 }
