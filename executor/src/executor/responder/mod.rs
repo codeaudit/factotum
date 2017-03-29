@@ -12,6 +12,7 @@
 // governing permissions and limitations there under.
 //
 
+use std::collections::HashMap;
 use std::error::Error;
 use std::ops::Deref;
 use std::sync::mpsc;
@@ -20,6 +21,7 @@ use iron::mime::*;
 use iron::prelude::*;
 use iron::status;
 use iron::status::Status;
+use url::Url;
 use bodyparser;
 use persistent::{Read, State};
 use serde::Serialize;
@@ -87,8 +89,8 @@ pub struct JobStatus {
 
 // Response handlers
 
-pub fn api(_: &mut Request) -> IronResult<Response> {
-    let response = get_help_message();
+pub fn api(request: &mut Request) -> IronResult<Response> {
+    let response = encode(get_help_message(), request);
     return_json(status::Ok, response)
 }
 
@@ -98,7 +100,8 @@ pub fn status(request: &mut Request) -> IronResult<Response> {
     let server_manager = reader.deref();
     let mutex = request.get::<Read<Updates>>().unwrap();
     let jobs_channel = mutex.try_lock().unwrap();
-    let response = get_server_status(server_manager, jobs_channel.clone());
+
+    let response = encode(get_server_status(server_manager, jobs_channel.clone()), request);
     return_json(status::Ok, response)
 }
 
@@ -110,10 +113,10 @@ pub fn settings(request: &mut Request) -> IronResult<Response> {
     let settings = match request.get::<bodyparser::Struct<SettingsRequest>>() {
         Ok(Some(decoded_settings)) => decoded_settings,
         Ok(None) => {
-            return return_json(status::BadRequest, create_warn_response("Error: No body found in POST request"))
+            return return_json(status::BadRequest, create_warn_response("Error: No body found in POST request", request))
         },
         Err(e) => {
-            return return_json(status::BadRequest, create_warn_response(&format!("Error decoding JSON string: {}", e.cause().unwrap())))
+            return return_json(status::BadRequest, create_warn_response(&format!("Error decoding JSON string: {}", e.cause().unwrap()), request))
         }
     };
 
@@ -121,13 +124,13 @@ pub fn settings(request: &mut Request) -> IronResult<Response> {
     let validated_settings = match SettingsRequest::validate(settings) {
         Ok(validated_settings) => validated_settings,
         Err(e) => {
-            return return_json(status::BadRequest, create_warn_response(&format!("{}", e)))
+            return return_json(status::BadRequest, create_warn_response(&format!("{}", e), request))
         }
     };
 
     // update server state
     server.state = validated_settings.state.to_string();
-    return_json(status::Ok, create_ok_response(&format!("Update acknowledged: [state: {}]", server.state)))
+    return_json(status::Ok, create_ok_response(&format!("Update acknowledged: [state: {}]", server.state), request))
 }
 
 pub fn submit(request: &mut Request) -> IronResult<Response> {
@@ -144,53 +147,53 @@ pub fn submit(request: &mut Request) -> IronResult<Response> {
     let job_request = match request.get::<bodyparser::Struct<JobRequest>>() {
         Ok(Some(decoded_job_request)) => decoded_job_request,
         Ok(None) => {
-            return return_json(status::BadRequest, create_warn_response("Error: No body found in POST request"))
+            return return_json(status::BadRequest, create_warn_response("Error: No body found in POST request", request))
         },
         Err(e) => {
-            return return_json(status::BadRequest, create_warn_response(&format!("Error decoding JSON string: {}", e.cause().unwrap())))
+            return return_json(status::BadRequest, create_warn_response(&format!("Error decoding JSON string: {}", e.cause().unwrap()), request))
         }
     };
 
     // check state
     if !server.is_running() {
-        return return_json(status::BadRequest, create_warn_response(&format!("Server in [{}] state - cannot submit job", server.state)))
+        return return_json(status::BadRequest, create_warn_response(&format!("Server in [{}] state - cannot submit job", server.state), request))
     }
 
     // validate job request
     let mut validated_job_request = match JobRequest::validate(job_request, &commander) {
         Ok(validated_job_request) => validated_job_request,
         Err(e) => {
-            return return_json(status::BadRequest, create_warn_response(&format!("{}", e)))
+            return return_json(status::BadRequest, create_warn_response(&format!("{}", e), request))
         }
     };
 
     // check if job has been run before
     if persistence.has_run(&mut validated_job_request) {
-        return return_json(status::BadRequest, create_warn_response("Job has already been run"))
+        return return_json(status::BadRequest, create_warn_response("Job has already been run", request))
     }
 
     // check queue size
     if is_requests_queue_full(jobs_channel.clone()) {
-        return return_json(status::BadRequest, create_warn_response("Queue is full, cannot add job"))
+        return return_json(status::BadRequest, create_warn_response("Queue is full, cannot add job", request))
     }
 
     // append args
     JobRequest::append_job_args(&server.deref(), &mut validated_job_request);
     let job_id = validated_job_request.job_id.clone();
     jobs_channel.send(Dispatch::NewRequest(validated_job_request)).expect("Job requests channel receiver has been deallocated");
-    return_json(status::Ok, create_ok_response(&format!("JOB SUBMITTED  jobId:[{}]", job_id)))
+    return_json(status::Ok, create_ok_response(&format!("JOB SUBMITTED  jobId:[{}]", job_id), request))
 }
 
 pub fn check(request: &mut Request) -> IronResult<Response> {
     let message = ResponseMessage { message: "check".to_string() };
-    let response = encode_compact(&message);
+    let response = encode(&message, request);
     return_json(status::Ok, response)
 }
 
 // Helpers
 
-fn get_help_message() -> String {
-    let message = json!(
+fn get_help_message() -> serde_json::Value {
+    json!(
         {
             "/help": {
                 "function": "Returns this message!",
@@ -221,16 +224,15 @@ fn get_help_message() -> String {
                 "params": "pretty=1, id=[id string]"
             }
         }
-    );
-    encode_pretty(&message)
+    )
 }
 
-fn get_server_status(server: &ServerManager, jobs_channel: Sender<Dispatch>) -> String {
+fn get_server_status(server: &ServerManager, jobs_channel: Sender<Dispatch>) -> FactotumServerStatus {
     let (tx, rx) = mpsc::channel();
     jobs_channel.send(Dispatch::StatusUpdate(Query::new("status_query".to_string(), tx))).expect("Job requests channel receiver has been deallocated");
     let dispatcher_status = rx.recv().expect("Server status senders have been disconnected");
 
-    let message = FactotumServerStatus {
+    FactotumServerStatus {
         version: VersionStatus {
             executor: ::VERSION.to_string()
         },
@@ -240,14 +242,19 @@ fn get_server_status(server: &ServerManager, jobs_channel: Sender<Dispatch>) -> 
             state: server.state.to_string()
         },
         dispatcher: dispatcher_status,
-    };
-    encode_pretty(&message)
+    }
 }
 
 fn is_requests_queue_full(jobs_channel: Sender<Dispatch>) -> bool {
     let (tx, rx) = mpsc::channel();
     jobs_channel.send(Dispatch::CheckQueue(Query::new("queue_query".to_string(), tx))).expect("Job requests channel receiver has been deallocated");
     rx.recv().expect("Queue query senders have been disconnected")
+}
+
+fn get_query_map(request: &mut Request) -> HashMap<String, String> {
+    let url = Url::parse(&format!("{}", request.url)).expect(&format!("Error parsing request URL '{}'", request.url));
+    let parser = url.query_pairs().into_owned();
+    parser.collect()
 }
 
 fn encode_compact<T: Serialize>(message: T) -> String {
@@ -258,19 +265,29 @@ fn encode_pretty<T: Serialize>(message: T) -> String {
     serde_json::to_string_pretty(&message).expect("JSON pretty encode error")
 }
 
-fn create_response(message: &str) -> String {
+fn encode<T: Serialize>(message: T, request: &mut Request) -> String {
+    let query_map = get_query_map(request);
+    if let Some(pretty) = query_map.get("pretty") {
+        if pretty == "1" {
+            return encode_pretty(message)
+        }
+    }
+    encode_compact(message)
+}
+
+fn create_response(message: &str, request: &mut Request) -> String {
     let response = ResponseMessage { message: message.to_string() };
-    encode_compact(&response)
+    encode(&response, request)
 }
 
-fn create_ok_response(message: &str) -> String {
+fn create_ok_response(message: &str, request: &mut Request) -> String {
     info!("{}", message);
-    create_response(message)
+    create_response(message, request)
 }
 
-fn create_warn_response(message: &str) -> String {
+fn create_warn_response(message: &str, request: &mut Request) -> String {
     warn!("{}", message);
-    create_response(message)
+    create_response(message, request)
 }
 
 fn return_json(code: Status, response: String) -> IronResult<Response> {
