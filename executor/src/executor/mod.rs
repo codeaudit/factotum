@@ -100,7 +100,7 @@ pub fn start(args: Args) {
             let socket_addr = listening.socket;
             let ip = socket_addr.ip();
             let port = socket_addr.port();
-            let start_message = format!("Factotum server version [{}] listening on [{}:{}]", ::VERSION, ip, port);
+            let start_message = format!("Factotum Server version [{}] listening on [{}:{}]", ::VERSION, ip, port);
             info!("{}", start_message);
             println!("{}", start_message)
         }

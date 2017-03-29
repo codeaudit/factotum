@@ -64,7 +64,7 @@ Usage:
 
 Options:
   -h --help                             Show this screen.
-  -v --version                          Display the version of Executor and exit.
+  -v --version                          Display the version of Factotum Server and exit.
   --ip=<address>                        Specify binding IP address.
   --port=<number>                       Specify port number.
   --log-level=<level>                   Specify logging level.
@@ -94,15 +94,12 @@ fn main() {
                             .and_then(|d| d.decode())
                             .unwrap_or_else(|e| e.exit());
 
-    check_factotum_bin_arg(&args.flag_factotum_bin);
-
-    check_ip_arg(&args.flag_ip);
-    
-    check_and_init_logger(&args.flag_log_level);
-
     if args.flag_version {
-        println!("Factotum server version {}", VERSION);
+        println!("Factotum Server version [{}]", VERSION);
     } else {
+        check_factotum_bin_arg(&args.flag_factotum_bin);
+        check_ip_arg(&args.flag_ip);
+        check_and_init_logger(&args.flag_log_level);
         executor::start(args);
     }
 }
@@ -164,7 +161,7 @@ fn get_log_config(log_level: LogLevelFilter) -> Result<log4rs::config::Config, l
     use log4rs::config::{Appender, Config, Root};
     
     let stdout = ConsoleAppender::builder()
-        .encoder(Box::new(PatternEncoder::new("{d} {l} - {m}{n}")))
+        .encoder(Box::new(PatternEncoder::new("{d} {l:>5} - {m}{n}")))
         .build();
 
     let root = Root::builder()
