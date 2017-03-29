@@ -44,7 +44,7 @@ fn job_request_empty_job_name() {
     let job_request = JobRequest::new("1".to_string(), String::new(), "/tmp/somewhere".to_string(), vec![]);
     let commander = commands![::FACTOTUM.to_string() => "/tmp/fake_path".to_string()];
     let validation_error = JobRequest::validate(job_request.clone(), &commander).unwrap_err();
-    assert_eq!(validation_error, ValidationError::no_output("No valid value found for 'jobName'".to_string()));
+    assert_eq!(validation_error, ValidationError::no_output("No valid value found: field 'jobName' cannot be empty".to_string()));
 }
 
 #[test]
@@ -52,7 +52,7 @@ fn job_request_empty_factfile_path() {
     let job_request = JobRequest::new("1".to_string(), "dummy".to_string(), String::new(), vec![]);
     let commander = commands![::FACTOTUM.to_string() => "/tmp/fake_path".to_string()];
     let validation_error = JobRequest::validate(job_request.clone(), &commander).unwrap_err();
-    assert_eq!(validation_error, ValidationError::no_output("No valid value found for 'factfilePath'".to_string()));
+    assert_eq!(validation_error, ValidationError::no_output("No valid value found: field 'factfilePath' cannot be empty".to_string()));
 }
 
 #[test]
@@ -82,5 +82,5 @@ fn settings_request_is_valid() {
 fn settings_request_is_invalid() {
     let settings_request = SettingsRequest::new("NOT A SERVER STATE".to_string());
     let validation_error = SettingsRequest::validate(settings_request).err().unwrap();
-    assert_eq!(validation_error.description(), "Invalid state, must be one of (run|drain)");
+    assert_eq!(validation_error.description(), "Invalid 'state', must be one of (run|drain)");
 }
